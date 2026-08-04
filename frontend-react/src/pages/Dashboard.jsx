@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { statsApi } from "../api/stats";
+import { useAuth } from "../hooks/useAuth";
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
   totalBooks: 0,
@@ -71,19 +73,31 @@ const cards = [
   },
 ];
 
+const hour = new Date().getHours();
+
+let greeting = "";
+
+if (hour < 12) {
+  greeting = "Good Morning";
+} else if (hour < 17) {
+  greeting = "Good Afternoon";
+} else {
+  greeting = "Good Evening";
+}
+
   return (
     <div className="space-y-6">
 
       {/* Header */}
-      <div>
-        <h1 className="text-3xl md:text-4xl font-bold text-slate-800">
-          Dashboard
-        </h1>
+<div className="bg-white rounded-xl shadow-md p-6">
+  <h1 className="text-3xl md:text-4xl font-bold text-slate-800">
+    {greeting}, {user?.full_name}! 👋
+  </h1>
 
-        <p className="text-slate-500 mt-2">
-          Welcome to the Library Management System.
-        </p>
-      </div>
+  <p className="text-slate-500 mt-2">
+    Welcome! Here's an overview of your library.
+  </p>
+</div>
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -121,15 +135,15 @@ const cards = [
         <h2 className="text-2xl font-semibold mb-5">
           Recent Activity
         </h2>
-      <div className="overflow-x-auto">
-        <table className="min-w-[700px]">
+      <div className="overflow-x-auto w-full">
+        <table className="w-full">
 
           <thead>
             <tr className="border-b">
-              <th className="text-left py-3 whitespace-nowrap">Book</th>
-              <th className="text-left py-3 whitespace-nowrap">Member</th>
-              <th className="text-left py-3 whitespace-nowrap">Date</th>
-              <th className="text-left py-3 whitespace-nowrap">Status</th>
+              <th className="text-left px-4 py-3">Book</th>
+              <th className="text-left px-4 py-3">Member</th>
+              <th className="text-left px-4 py-3">Date</th>
+              <th className="text-center px-4 py-3">Status</th>
             </tr>
           </thead>
 

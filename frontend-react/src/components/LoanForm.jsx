@@ -1,4 +1,8 @@
 import { useEffect, useState } from "react";
+import { useFormik } from "formik";
+import * as Yup from "yup";
+import { toast } from "react-hot-toast";
+
 import { booksApi } from "../api/books";
 import { membersApi } from "../api/members";
 
@@ -9,17 +13,53 @@ export default function LoanForm({
   const [books, setBooks] = useState([]);
   const [members, setMembers] = useState([]);
 
-  const [loan, setLoan] = useState({
-    book_id: "",
+  const validationSchema = Yup.object({
+
+  member_id: Yup.string()
+    .required("Please select a member"),
+
+  book_id: Yup.string()
+    .required("Please select a book"),
+
+  due_date: Yup.date()
+    .required("Due Date is required")
+    .min(
+      new Date().toISOString().split("T")[0],
+      "Due Date cannot be in the past"
+    ),
+
+  notes: Yup.string()
+
+});
+const formik = useFormik({
+
+  initialValues: {
     member_id: "",
+    book_id: "",
     due_date: "",
     notes: "",
-  });
+  },
+
+  validationSchema,
+
+  onSubmit: async (values, { resetForm }) => {
+
+    await onSubmit(values);
+
+    resetForm();
+
+  }
+
+});
 
   useEffect(() => {
     loadBooks();
     loadMembers();
   }, []);
+
+  const isDisabled =
+  formik.isSubmitting ||
+  (!formik.isValid && formik.submitCount > 0);
 
   async function loadBooks() {
     try {
@@ -41,29 +81,8 @@ export default function LoanForm({
     }
   }
 
-  function handleChange(e) {
-    setLoan({
-      ...loan,
-      [e.target.name]: e.target.value,
-    });
-  }
-
-  function handleSubmit(e) {
-    e.preventDefault();
-
-    if (
-      !loan.book_id ||
-      !loan.member_id ||
-      !loan.due_date
-    ) {
-      alert("Please fill all required fields.");
-      return;
-    }
-
-    onSubmit(loan);
-  }
   return (
-  <form onSubmit={handleSubmit} className="space-y-6">
+  <form onSubmit={formik.handleSubmit} className="space-y-6">
 
     <div className="border-b pb-4">
       <h2 className="text-2xl font-bold">
@@ -84,11 +103,13 @@ export default function LoanForm({
         </label>
 
         <select
-          name="member_id"
-          value={loan.member_id}
-          onChange={handleChange}
-          className="w-full border rounded-lg px-4 py-3"
-        >
+  name="member_id"
+  value={formik.values.member_id}
+  onChange={formik.handleChange}
+  onBlur={formik.handleBlur}
+  className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+>
+ 
           <option value="">
             Select Member
           </option>
@@ -102,6 +123,11 @@ export default function LoanForm({
             </option>
           ))}
         </select>
+         {formik.touched.member_id && formik.errors.member_id && (
+  <p className="text-red-500 text-sm mt-1">
+    {formik.errors.member_id}
+  </p>
+)}
       </div>
 
       {/* Book */}
@@ -111,11 +137,13 @@ export default function LoanForm({
         </label>
 
         <select
-          name="book_id"
-          value={loan.book_id}
-          onChange={handleChange}
-          className="w-full border rounded-lg px-4 py-3"
-        >
+  name="book_id"
+  value={formik.values.book_id}
+  onChange={formik.handleChange}
+  onBlur={formik.handleBlur}
+  className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+>
+  
           <option value="">
             Select Book
           </option>
@@ -129,6 +157,11 @@ export default function LoanForm({
             </option>
           ))}
         </select>
+        {formik.touched.book_id && formik.errors.book_id && (
+  <p className="text-red-500 text-sm mt-1">
+    {formik.errors.book_id}
+  </p>
+)}
       </div>
 
       {/* Due Date */}
@@ -138,12 +171,18 @@ export default function LoanForm({
         </label>
 
         <input
-          type="date"
-          name="due_date"
-          value={loan.due_date}
-          onChange={handleChange}
-          className="w-full border rounded-lg px-4 py-3"
-        />
+  type="date"
+  name="due_date"
+  value={formik.values.due_date}
+  onChange={formik.handleChange}
+  onBlur={formik.handleBlur}
+  className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+/>
+{formik.touched.due_date && formik.errors.due_date && (
+  <p className="text-red-500 text-sm mt-1">
+    {formik.errors.due_date}
+  </p>
+)}
       </div>
 
       {/* Notes */}
@@ -153,12 +192,13 @@ export default function LoanForm({
         </label>
 
         <textarea
-          rows="4"
-          name="notes"
-          value={loan.notes}
-          onChange={handleChange}
-          className="w-full border rounded-lg px-4 py-3"
-        />
+  rows="4"
+  name="notes"
+  value={formik.values.notes}
+  onChange={formik.handleChange}
+  onBlur={formik.handleBlur}
+  className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+/>
       </div>
 
     </div>
@@ -174,14 +214,20 @@ export default function LoanForm({
       </button>
 
       <button
-        type="submit"
-        className="px-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white"
-      >
-        Issue Book
-      </button>
+  type="submit"
+  disabled={isDisabled}
+  className={`px-6 py-3 rounded-lg text-white font-semibold transition ${
+    isDisabled
+      ? "bg-gray-400 cursor-not-allowed"
+      : "bg-blue-600 hover:bg-blue-700"
+  }`}
+>
+  {formik.isSubmitting ? "Issuing..." : "Issue Book"}
+</button>
+
 
     </div>
 
   </form>
 );
-}
+} 

@@ -1,13 +1,12 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { UserCircle2 } from "lucide-react";
 
-export default function Sidebar({
-  sidebarOpen,
-  setSidebarOpen,
-}) {
+export default function Sidebar() {
+  
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-
+  
   function handleLogout() {
     logout();
     navigate("/login");
@@ -25,31 +24,23 @@ export default function Sidebar({
 
   return (
     <>
-      {/* Mobile Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+     
 
       <aside
-        className={`
-          fixed md:static
-          top-0 left-0
-          h-full md:min-h-screen
-          w-72
-          bg-slate-900 text-white
-          flex flex-col shadow-xl
-          transform transition-transform duration-300 z-50
-          ${
-            sidebarOpen
-              ? "translate-x-0"
-              : "-translate-x-full md:translate-x-0"
-          }
-        `}
-      >
-
+  className="
+    fixed
+    top-0
+    left-0
+    h-screen
+    w-72
+    bg-slate-900
+    text-white
+    flex
+    flex-col
+    shadow-xl
+  "
+>
+    
         {/* Logo */}
         <div className="p-6 border-b border-slate-700 flex justify-between items-center">
 
@@ -62,13 +53,6 @@ export default function Sidebar({
               Library Management System
             </p>
           </div>
-
-          <button
-            className="md:hidden text-2xl"
-            onClick={() => setSidebarOpen(false)}
-          >
-            ✕
-          </button>
 
         </div>
 
@@ -95,20 +79,39 @@ export default function Sidebar({
             💰 Fines
           </NavLink>
 
+          <NavLink to="/settings" className={activeItem}>
+          ⚙️ Settings
+          </NavLink>
+
         </nav>
 
         {/* User */}
         <div className="border-t border-slate-700 p-5">
 
-          <div className="mb-5">
-            <p className="font-semibold text-lg">
-              {user?.name || "Administrator"}
-            </p>
+          <div className="flex flex-col items-center mb-5">
 
-            <p className="text-sm text-slate-400">
-              {user?.role || "Admin"}
-            </p>
-          </div>
+  {user?.profile_image ? (
+    <img
+      src={`http://localhost:5000${user.profile_image}`}
+      alt="Profile"
+      className="w-20 h-20 rounded-full object-cover border-2 border-blue-500 shadow-md"
+    />
+  ) : (
+    <UserCircle2
+      size={80}
+      className="text-slate-400"
+    />
+  )}
+
+  <p className="font-semibold text-lg mt-3">
+    {user?.full_name}
+  </p>
+
+  <p className="text-sm text-slate-400">
+    {user?.email}
+  </p>
+
+</div>
 
           <button
             onClick={handleLogout}

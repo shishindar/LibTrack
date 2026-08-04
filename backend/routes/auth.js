@@ -3,6 +3,7 @@ const router = express.Router();
 
 const authController = require('../controllers/authController');
 const { requireAuth } = require('../middleware/auth');
+const { loginLimiter } = require("../middleware/rateLimiter");
 
 router.get('/test', (req, res) => {
   res.json({
@@ -12,15 +13,46 @@ router.get('/test', (req, res) => {
 });
 
 router.post('/register', authController.register);
-router.post('/login', authController.login);
+router.post("/login", loginLimiter, authController.login);
+router.post("/refresh", authController.refreshToken);
 
 console.log('ME ROUTE LOADED');
 
-router.get('/me', requireAuth, (req, res) => {
-  res.json({
-    success: true,
-    user: req.user
-  });
+const db = require("../config/db");
+
+router.get("/me", requireAuth, async (req, res) => {
+  try {
+    const [users] = await db.query(
+  `
+  SELECT
+    id,
+    full_name,
+    email,
+    profile_image
+  FROM users
+  WHERE id = ?
+  `,
+  [req.user.id]
+);
+
+    if (users.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      user: users[0],
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
 });
 
 module.exports = router;

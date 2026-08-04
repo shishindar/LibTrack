@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { loansApi } from "../api/loans";
 import LoanForm from "../components/LoanForm";
+import Swal from "sweetalert2";
+import { toast } from "react-hot-toast";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 export default function Loans() {
   const [loans, setLoans] = useState([]);
@@ -9,6 +13,10 @@ export default function Loans() {
   const [showForm, setShowForm] = useState(false);
 
   const [search, setSearch] = useState("");
+  const [searchText, setSearchText] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+const loansPerPage = 10;
 
   useEffect(() => {
     fetchLoans();
@@ -23,7 +31,7 @@ export default function Loans() {
       setLoans(res.data || []);
     } catch (err) {
       console.error(err);
-      alert("Failed to load loans.");
+      toast.error("Failed to load loans.");
     } finally {
       setLoading(false);
     }
@@ -33,28 +41,54 @@ export default function Loans() {
     try {
       await loansApi.issueBook(loan);
 
-      alert("Book Issued Successfully!");
+      Swal.fire({
+  icon: "success",
+  title: "Book Issued",
+  text: "Book issued successfully.",
+  timer: 1800,
+  showConfirmButton: false,
+});
 
       setShowForm(false);
+setCurrentPage(1);
 
-      await fetchLoans();
-
+await fetchLoans();
     } catch (err) {
       console.error(err);
 
-      alert(err.message);
+      toast.error(
+  err.response?.data?.message ||
+  err.message ||
+  "Failed to issue book."
+);
     }
   }
 
   async function returnBook(id) {
 
-    if (!window.confirm("Return this book?")) return;
+    const result = await Swal.fire({
+  title: "Return Book?",
+  text: "Confirm returning this book.",
+  icon: "question",
+  showCancelButton: true,
+  confirmButtonText: "Return",
+  cancelButtonText: "Cancel",
+  confirmButtonColor: "#16a34a",
+});
+
+if (!result.isConfirmed) return;
 
     try {
 
       await loansApi.returnBook(id);
 
-      alert("Book Returned Successfully!");
+      Swal.fire({
+  icon: "success",
+  title: "Returned",
+  text: "Book returned successfully.",
+  timer: 1800,
+  showConfirmButton: false,
+});
 
       await fetchLoans();
 
@@ -62,10 +96,54 @@ export default function Loans() {
 
       console.error(err);
 
-      alert(err.message);
+      toast.error(
+  err.response?.data?.message ||
+  err.message ||
+  "Return failed."
+);
 
     }
   }
+
+  function exportLoans() {
+  const data = filteredLoans.map((loan) => ({
+    Member: loan.member_name,
+    Book: loan.book_title,
+    "Issue Date": loan.issued_at
+      ? new Date(loan.issued_at).toLocaleDateString()
+      : "-",
+    "Due Date": loan.due_date
+      ? new Date(loan.due_date).toLocaleDateString()
+      : "-",
+    Status:
+      loan.status === "returned"
+        ? "Returned"
+        : new Date(loan.due_date) < new Date()
+        ? "Overdue"
+        : "Active",
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(data);
+
+  const workbook = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Loans");
+
+  const excelBuffer = XLSX.write(workbook, {
+    bookType: "xlsx",
+    type: "array",
+  });
+
+  const file = new Blob([excelBuffer], {
+    type:
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8",
+  });
+
+  saveAs(
+    file,
+    `Loans_Report_${new Date().toISOString().split("T")[0]}.xlsx`
+  );
+}
 
   const filteredLoans = useMemo(() => {
 
@@ -82,6 +160,38 @@ export default function Loans() {
     );
 
   }, [loans, search]);
+
+  const indexOfLastLoan = currentPage * loansPerPage;
+
+const indexOfFirstLoan = indexOfLastLoan - loansPerPage;
+
+const currentLoans = filteredLoans.slice(
+  indexOfFirstLoan,
+  indexOfLastLoan
+);
+
+const totalPages = Math.ceil(
+  filteredLoans.length / loansPerPage
+);
+
+  function handleSearch() {
+
+  setSearch(searchText);
+
+  setCurrentPage(1);
+
+}
+
+function clearSearch() {
+
+  setSearch("");
+
+  setSearchText("");
+
+  setCurrentPage(1);
+
+}
+
   if (loading) {
   return (
     <div className="flex items-center justify-center h-96">
@@ -103,39 +213,76 @@ return (
   <div className="p-6 bg-gray-100 min-h-screen">
 
     {/* Header */}
-    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+<div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
 
-      <div>
-        <h1 className="text-3xl font-bold text-gray-800">
-          📖 Loans Management
-        </h1>
+  <div>
+    <h1 className="text-3xl font-bold text-gray-800">
+      📖 Loans Management
+    </h1>
 
-        <p className="text-gray-500 mt-1">
-          Issue and return library books
-        </p>
-      </div>
+    <p className="text-gray-500 mt-1">
+      Issue and return library books
+    </p>
+  </div>
 
-      <button
-        onClick={() => setShowForm(true)}
-        className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg shadow transition"
-      >
-        + Issue Book
-      </button>
+  <div className="flex gap-3">
 
-    </div>
+    <button
+      onClick={exportLoans}
+      className="bg-green-600 hover:bg-green-700 text-white px-5 py-3 rounded-lg shadow transition"
+    >
+      📥 Download Excel
+    </button>
+
+    <button
+      onClick={() => {
+        setShowForm(true);
+        clearSearch();
+      }}
+      className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg shadow transition"
+    >
+      + Issue Book
+    </button>
+
+  </div>
+
+</div>
 
     {/* Search */}
     <div className="bg-white rounded-xl shadow p-5 mb-6">
 
-      <input
-        type="text"
-        placeholder="🔍 Search by Book, Member or Status..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-      />
+  <div className="flex flex-col md:flex-row gap-3">
 
-    </div>
+    <input
+      type="text"
+      placeholder="🔍 Search by Book, Member or Status..."
+      value={searchText}
+      onChange={(e) => setSearchText(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          handleSearch();
+        }
+      }}
+      className="flex-1 border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+    />
+
+    <button
+      onClick={handleSearch}
+      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition"
+    >
+      Search
+    </button>
+
+    <button
+      onClick={clearSearch}
+      className="bg-gray-300 hover:bg-gray-400 px-6 py-3 rounded-lg transition"
+    >
+      Clear
+    </button>
+
+  </div>
+
+</div>
 
     {/* Modal */}
     {showForm && (
@@ -167,6 +314,7 @@ return (
               <th className="px-5 py-3 text-left">Member</th>
               <th className="px-5 py-3 text-left">Book</th>
               <th className="px-5 py-3 text-left">Issue Date</th>
+              <th className="px-5 py-3 text-center">Days</th>
               <th className="px-5 py-3 text-left">Due Date</th>
               <th className="px-5 py-3 text-center">Status</th>
               <th className="px-5 py-3 text-center">Actions</th>
@@ -176,7 +324,7 @@ return (
 
           <tbody>
 
-            {filteredLoans.length === 0 ? (
+            {currentLoans.length === 0 ? (
 
               <tr>
 
@@ -191,7 +339,7 @@ return (
 
             ) : (
 
-              filteredLoans.map((loan, index) => (
+              currentLoans.map((loan, index) => (
 
                 <tr
                   key={loan.id}
@@ -199,7 +347,7 @@ return (
                 >
 
                   <td className="px-5 py-4">
-                    {index + 1}
+                    {indexOfFirstLoan + index + 1}
                   </td>
 
                   <td className="px-5 py-4 font-medium">
@@ -211,27 +359,74 @@ return (
                   </td>
 
                   <td className="px-5 py-4">
-                    {loan.issued_at
-                      ? new Date(loan.issued_at).toLocaleDateString()
-                      : "-"}
-                  </td>
+  {loan.issued_at
+    ? new Date(loan.issued_at).toLocaleDateString()
+    : "-"}
+</td>
 
-                  <td className="px-5 py-4">
-                    {loan.due_date
-                      ? new Date(loan.due_date).toLocaleDateString()
-                      : "-"}
-                  </td>
+<td className="px-5 py-4 text-center">
+  {(() => {
+    if (loan.status === "returned") {
+      return (
+        <span className="text-blue-600 font-medium">
+          Returned
+        </span>
+      );
+    }
+
+    const today = new Date();
+    const due = new Date(loan.due_date);
+
+    const diff = Math.ceil(
+      (due - today) / (1000 * 60 * 60 * 24)
+    );
+
+    if (diff < 0) {
+      return (
+        <span className="text-red-600 font-bold">
+          {Math.abs(diff)} day(s) overdue
+        </span>
+      );
+    }
+
+    if (diff === 0) {
+      return (
+        <span className="text-yellow-600 font-semibold">
+          Due Today
+        </span>
+      );
+    }
+
+    return (
+      <span className="text-green-600">
+        {diff} day(s) left
+      </span>
+    );
+  })()}
+</td>
+
+<td className="px-5 py-4">
+  {loan.due_date
+    ? new Date(loan.due_date).toLocaleDateString()
+    : "-"}
+</td>
 
                   <td className="px-5 py-4 text-center">
 
                     <span
                       className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        loan.status === "returned"
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-green-100 text-green-700"
-                      }`}
+  loan.status === "returned"
+    ? "bg-blue-100 text-blue-700"
+    : new Date(loan.due_date) < new Date()
+    ? "bg-red-100 text-red-700"
+    : "bg-green-100 text-green-700"
+}`}
                     >
-                      {loan.status || "active"}
+                      {loan.status === "returned"
+  ? "Returned"
+  : new Date(loan.due_date) < new Date()
+  ? "Overdue"
+  : "Active"}
                     </span>
 
                   </td>
@@ -268,7 +463,78 @@ return (
       </div>
 
     </div>
+<div className="flex flex-col md:flex-row justify-between items-center mt-6 gap-4">
+
+  <p className="text-gray-600">
+    Showing {filteredLoans.length === 0 ? 0 : indexOfFirstLoan + 1}
+    {" - "}
+    {Math.min(indexOfLastLoan, filteredLoans.length)}
+    {" of "}
+    {filteredLoans.length} Loans
+  </p>
+
+  <div className="flex items-center gap-2 flex-wrap justify-center">
+
+    <button
+      disabled={currentPage === 1}
+      onClick={() => setCurrentPage(currentPage - 1)}
+      className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
+    >
+      Previous
+    </button>
+
+    {Array.from({ length: totalPages }, (_, i) => {
+      const page = i + 1;
+
+      if (
+        page === 1 ||
+        page === totalPages ||
+        (page >= currentPage - 2 && page <= currentPage + 2)
+      ) {
+        return (
+          <button
+            key={page}
+            onClick={() => setCurrentPage(page)}
+            className={`w-10 h-10 rounded-lg transition ${
+              currentPage === page
+                ? "bg-blue-600 text-white"
+                : "bg-gray-200 hover:bg-gray-300"
+            }`}
+          >
+            {page}
+          </button>
+        );
+      }
+
+      if (
+        page === currentPage - 3 ||
+        page === currentPage + 3
+      ) {
+        return (
+          <span
+            key={page} 
+            className="px-2 text-gray-500"
+          >
+            ...
+          </span>
+        );
+      }
+
+      return null;
+    })}
+
+    <button
+      disabled={currentPage === totalPages}
+      onClick={() => setCurrentPage(currentPage + 1)}
+      className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
+    >
+      Next
+    </button>
 
   </div>
+
+</div>
+
+</div>
 );
-}
+} 

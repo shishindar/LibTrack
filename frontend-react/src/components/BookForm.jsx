@@ -1,5 +1,8 @@
-import { useState, useEffect } from "react";
-import { authorsApi } from "../api/authors";
+import { useEffect, useState } from "react";
+import { useFormik } from "formik";
+import * as Yup from "yup";
+
+
 
 export default function BookForm({
   book: editingBook,
@@ -7,92 +10,140 @@ export default function BookForm({
   onSubmit,
   onCancel,
 }) {
-  const [authors, setAuthors] = useState([]);
+  
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [preview, setPreview] = useState("");
 
   const emptyBook = {
     isbn: "",
     title: "",
-    author_id: "",
+    author: "",
     genre: "",
     publisher: "",
     published_year: "",
     total_copies: 1,
     available_copies: 1,
     cover_url: "",
+    cover: null,
     description: "",
   };
 
-  const [book, setBook] = useState(emptyBook);
+  const validationSchema = Yup.object({
 
-  useEffect(() => {
-    loadAuthors();
-  }, []);
+  isbn: Yup.string()
+    .required("ISBN is required")
+    .min(10, "ISBN must be at least 10 characters"),
 
-  useEffect(() => {
-    if (editingBook) {
-      setBook({
-        isbn: editingBook.isbn || "",
-        title: editingBook.title || "",
-        author_id: editingBook.author_id || "",
-        genre: editingBook.genre || "",
-        publisher: editingBook.publisher || "",
-        published_year: editingBook.published_year || "",
-        total_copies: editingBook.total_copies || 1,
-        available_copies:
-          editingBook.available_copies || 1,
-        cover_url: editingBook.cover_url || "",
-        description: editingBook.description || "",
-      });
-    } else {
-      setBook(emptyBook);
-    }
-  }, [editingBook]);
+  title: Yup.string()
+    .required("Title is required"),
 
-  async function loadAuthors() {
-    try {
-      const res = await authorsApi.getAll();
-      setAuthors(res.data);
-    } catch (err) {
-      console.error(err);
-      alert("Failed to load authors.");
-    }
+  author: Yup.string()
+    .required("Author is required"),
+
+  genre: Yup.string()
+    .required("Genre is required"),
+
+  publisher: Yup.string(),
+
+  published_year: Yup.number()
+    .required("Published Year is required")
+    .min(1900)
+    .max(new Date().getFullYear()),
+
+  total_copies: Yup.number()
+    .required("Total Copies is required")
+    .min(1, "Minimum 1 Copy is required"),
+
+  available_copies: Yup.number()
+    .required("Available Copies is required")
+    .min(0, "Available Copies cannot be negative")
+    .test(
+      "copies",
+      "Available Copies cannot exceed Total Copies",
+      function (value) {
+        return value <= this.parent.total_copies;
+      }
+    ),
+
+  description: Yup.string()
+
+});
+
+const formik = useFormik({
+
+  initialValues: emptyBook,
+
+  validationSchema,
+
+ onSubmit: async (values, { resetForm }) => {
+
+  const formData = new FormData();
+
+  Object.keys(values).forEach((key) => {
+    formData.append(key, values[key]);
+  });
+
+  if (selectedFile) {
+    formData.append("cover", selectedFile);
   }
 
-  function handleChange(e) {
-    const { name, value } = e.target;
+  await onSubmit(formData);
 
-    setBook((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+  if (!isEditing) {
+    resetForm();
+    setSelectedFile(null);
+    setPreview("");
   }
-
-  function handleSubmit(e) {
-  e.preventDefault();
-
-  if (
-    !book.isbn ||
-    !book.title ||
-    !book.author_id
-  ) {
-    alert("ISBN, Title and Author are required.");
-    return;
-  }
-
-  if (!book.published_year) {
-    alert("Published Year is required.");
-    return;
-  }
-
-  if (Number(book.available_copies) > Number(book.total_copies)) {
-    alert("Available Copies cannot be greater than Total Copies.");
-    return;
-  }
-
-  onSubmit(book);
 }
+
+});
+
+
+  useEffect(() => {
+
+  if (editingBook) {
+
+    formik.setValues({
+
+      isbn: editingBook.isbn || "",
+
+      title: editingBook.title || "",
+
+      author: editingBook.author || "",
+
+      genre: editingBook.genre || "",
+
+      publisher: editingBook.publisher || "",
+
+      published_year: editingBook.published_year || "",
+
+      total_copies: editingBook.total_copies || 1,
+
+      available_copies:
+        editingBook.available_copies || 1,
+
+      cover_url: editingBook.cover_url || "",
+
+      description:
+        editingBook.description || ""
+
+    });
+
+  }
+
+  else {
+
+    formik.resetForm();
+
+  }
+
+}, [editingBook]);
+const isDisabled =
+  formik.isSubmitting ||
+  (!formik.isValid && formik.submitCount > 0);
+
   return (
-  <form onSubmit={handleSubmit} className="space-y-6">
+  <form onSubmit={formik.handleSubmit} className="space-y-6">
 
     {/* Header */}
     <div className="border-b pb-4">
@@ -114,14 +165,21 @@ export default function BookForm({
           ISBN
         </label>
 
-        <input
-          type="text"
-          name="isbn"
-          value={book.isbn}
-          onChange={handleChange}
-          className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-          placeholder="978..."
-        />
+       <input
+  type="text"
+  name="isbn"
+  value={formik.values.isbn}
+  onChange={formik.handleChange}
+  onBlur={formik.handleBlur}
+  className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+  placeholder="978..."
+/>
+
+{formik.touched.isbn && formik.errors.isbn && (
+  <p className="text-red-500 text-sm mt-1">
+    {formik.errors.isbn}
+  </p>
+)}
       </div>
 
       {/* Title */}
@@ -131,36 +189,44 @@ export default function BookForm({
         </label>
 
         <input
-          type="text"
-          name="title"
-          value={book.title}
-          onChange={handleChange}
-          className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-          placeholder="Book Title"
-        />
+  type="text"
+  name="title"
+  value={formik.values.title}
+  onChange={formik.handleChange}
+  onBlur={formik.handleBlur}
+  className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+  placeholder="Book Title"
+/>
+
+{formik.touched.title && formik.errors.title && (
+  <p className="text-red-500 text-sm mt-1">
+    {formik.errors.title}
+  </p>
+)}
       </div>
 
       {/* Author */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Author
-        </label>
+<div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    Author
+  </label>
 
-        <select
-          name="author_id"
-          value={book.author_id}
-          onChange={handleChange}
-          className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-        >
-          <option value="">Select Author</option>
+  <input
+  type="text"
+  name="author"
+  value={formik.values.author}
+  onChange={formik.handleChange}
+  onBlur={formik.handleBlur}
+  className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+  placeholder="Enter author name"
+/>
 
-          {authors.map((author) => (
-            <option key={author.id} value={author.id}>
-              {author.name}
-            </option>
-          ))}
-        </select>
-      </div>
+{formik.touched.author && formik.errors.author && (
+  <p className="text-red-500 text-sm mt-1">
+    {formik.errors.author}
+  </p>
+)}
+</div>
 
       {/* Genre */}
       <div>
@@ -169,28 +235,37 @@ export default function BookForm({
         </label>
 
         <input
-          type="text"
-          name="genre"
-          value={book.genre}
-          onChange={handleChange}
-          className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-        />
+  type="text"
+  name="genre"
+  value={formik.values.genre}
+  onChange={formik.handleChange}
+  onBlur={formik.handleBlur}
+  className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+/>
+
+{formik.touched.genre && formik.errors.genre && (
+  <p className="text-red-500 text-sm mt-1">
+    {formik.errors.genre}
+  </p>
+)}
       </div>
 
       {/* Publisher */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Publisher
-        </label>
+     <div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    Publisher
+  </label>
 
-        <input
-          type="text"
-          name="publisher"
-          value={book.publisher}
-          onChange={handleChange}
-          className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-        />
-      </div>
+  <input
+    type="text"
+    name="publisher"
+    value={formik.values.publisher}
+    onChange={formik.handleChange}
+    onBlur={formik.handleBlur}
+    className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+    placeholder="Publisher"
+  />
+</div>
 
       {/* Published Year */}
       <div>
@@ -199,12 +274,19 @@ export default function BookForm({
         </label>
 
         <input
-          type="number"
-          name="published_year"
-          value={book.published_year}
-          onChange={handleChange}
-          className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-        />
+  type="number"
+  name="published_year"
+  value={formik.values.published_year}
+  onChange={formik.handleChange}
+  onBlur={formik.handleBlur}
+  className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+/>
+
+{formik.touched.published_year && formik.errors.published_year && (
+  <p className="text-red-500 text-sm mt-1">
+    {formik.errors.published_year}
+  </p>
+)}
       </div>
 
       {/* Total Copies */}
@@ -214,12 +296,19 @@ export default function BookForm({
         </label>
 
         <input
-          type="number"
-          name="total_copies"
-          value={book.total_copies}
-          onChange={handleChange}
-          className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-        />
+  type="number"
+  name="total_copies"
+  value={formik.values.total_copies}
+  onChange={formik.handleChange}
+  onBlur={formik.handleBlur}
+  className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+/>
+
+{formik.touched.total_copies && formik.errors.total_copies && (
+  <p className="text-red-500 text-sm mt-1">
+    {formik.errors.total_copies}
+  </p>
+)}
       </div>
 
       {/* Available Copies */}
@@ -229,29 +318,50 @@ export default function BookForm({
         </label>
 
         <input
-          type="number"
-          name="available_copies"
-          value={book.available_copies}
-          onChange={handleChange}
-          className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-        />
+  type="number"
+  name="available_copies"
+  value={formik.values.available_copies}
+  onChange={formik.handleChange}
+  onBlur={formik.handleBlur}
+  className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+/>
+
+{formik.touched.available_copies && formik.errors.available_copies && (
+  <p className="text-red-500 text-sm mt-1">
+    {formik.errors.available_copies}
+  </p>
+)}
       </div>
 
       {/* Cover URL */}
-      <div className="md:col-span-2">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Cover Image URL
-        </label>
+      {/* Cover Image */}
+<div className="md:col-span-2">
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    Book Cover
+  </label>
 
-        <input
-          type="text"
-          name="cover_url"
-          value={book.cover_url}
-          onChange={handleChange}
-          className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-          placeholder="https://..."
-        />
-      </div>
+  <input
+    type="file"
+    accept="image/*"
+    onChange={(e) => {
+      const file = e.target.files[0];
+
+      if (file) {
+        setSelectedFile(file);
+        setPreview(URL.createObjectURL(file));
+      }
+    }}
+    className="w-full border rounded-lg px-4 py-3"
+  />
+
+  {preview && (
+    <img
+      src={preview}
+      alt="Preview"
+      className="mt-4 h-40 rounded-lg border object-cover"
+    />
+  )}
+</div>
 
       {/* Description */}
       <div className="md:col-span-2">
@@ -260,13 +370,14 @@ export default function BookForm({
         </label>
 
         <textarea
-          rows="5"
-          name="description"
-          value={book.description}
-          onChange={handleChange}
-          className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-          placeholder="Book description..."
-        />
+  rows="5"
+  name="description"
+  value={formik.values.description}
+  onChange={formik.handleChange}
+  onBlur={formik.handleBlur}
+  className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+  placeholder="Book description..."
+/>
       </div>
 
     </div>
@@ -283,11 +394,20 @@ export default function BookForm({
       </button>
 
       <button
-        type="submit"
-        className="px-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition"
-      >
-        {isEditing ? "Update Book" : "Save Book"}
-      </button>
+  type="submit"
+  disabled={isDisabled}
+  className={`px-6 py-3 rounded-lg text-white font-semibold transition ${
+    isDisabled
+      ? "bg-gray-400 cursor-not-allowed"
+      : "bg-blue-600 hover:bg-blue-700"
+  }`}
+>
+  {formik.isSubmitting
+    ? "Saving..."
+    : isEditing
+    ? "Update Book"
+    : "Save Book"}
+</button>
 
     </div>
 

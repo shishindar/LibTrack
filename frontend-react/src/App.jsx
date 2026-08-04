@@ -10,6 +10,7 @@ import Fines from './pages/Fines';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import RequireAuth from './pages/RequireAuth';
+import Settings from "./pages/Settings";
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
         <Route path="/members" element={<Members />} />
         <Route path="/loans" element={<Loans />} />
         <Route path="/fines" element={<Fines />} />
+        <Route path="/settings" element={<Settings />} />
       </Route>
 
       {/* Default Route */}

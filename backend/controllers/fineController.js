@@ -3,17 +3,22 @@ const db = require("../config/db");
 // Get all fines
 exports.getFines = async (req, res) => {
   try {
-    const [fines] = await db.query(`
-      SELECT
-        f.*,
-        b.title AS book_title,
-        m.full_name AS member_name
-      FROM fines f
-      JOIN loans l ON f.loan_id = l.id
-      JOIN books b ON l.book_id = b.id
-      JOIN members m ON l.member_id = m.id
-      ORDER BY f.created_at DESC
-    `);
+    const userId = req.user.id;
+    const [fines] = await db.query(
+  `
+  SELECT
+    f.*,
+    b.title AS book_title,
+    m.full_name AS member_name
+  FROM fines f
+  JOIN loans l ON f.loan_id = l.id
+  JOIN books b ON l.book_id = b.id
+  JOIN members m ON l.member_id = m.id
+  WHERE f.user_id = ?
+  ORDER BY f.created_at DESC
+  `,
+  [userId]
+);
 
     res.json({
       success: true,
@@ -32,17 +37,19 @@ exports.getFines = async (req, res) => {
 // Pay Fine
 exports.payFine = async (req, res) => {
   try {
+    const userId = req.user.id;
     const { id } = req.params;
 
     const [result] = await db.query(
       `
       UPDATE fines
-      SET
-        paid = 1,
-        paid_at = NOW()
-      WHERE id = ?
+SET
+  paid = 1,
+  paid_at = NOW()
+WHERE id = ?
+AND user_id = ?
       `,
-      [id]
+      [id, userId]
     );
 
     if (result.affectedRows === 0) {
@@ -63,4 +70,4 @@ exports.payFine = async (req, res) => {
       error: error.message,
     });
   }
-};
+}; 

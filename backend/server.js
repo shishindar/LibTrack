@@ -1,10 +1,12 @@
 require('dotenv').config();
 
 const express      = require('express');
+const helmet       = require("helmet");
 const cors         = require('cors');
 const morgan       = require('morgan');
 const errorHandler = require('./middleware/Errorhandler.js');
 const { requireAuth } = require('./middleware/auth');
+const sanitize     = require("./middleware/sanitize");
 
 // ── Route modules ─────────────────────────────────────────────────────────────
 const authRouter    = require('./routes/auth');
@@ -16,13 +18,26 @@ const loansRouter   = require('./routes/loans');
 const authorsRouter = require('./routes/authors');
 const finesRouter   = require('./routes/fines');
 const statsRouter   = require('./routes/stats');
+const profileRouter = require("./routes/profile");
 
 const app  = express();
 const PORT = process.env.PORT || 5000;
 
+app.use(
+  helmet({
+    crossOriginResourcePolicy: {
+      policy: "cross-origin",
+    },
+  })
+);
+
 // ── Middleware ─────────────────────────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
+app.use(sanitize);
+const path = require("path");
+
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 // ── Health check (public) ───────────────────────────────────────────────────────
@@ -59,6 +74,7 @@ app.use('/api/loans',   requireAuth, loansRouter);
 app.use('/api/authors', requireAuth, authorsRouter);
 app.use("/api/fines", requireAuth, finesRouter);
 app.use('/api/stats',   requireAuth, statsRouter);
+app.use("/api/profile", profileRouter);
 
 // ── 404 catcher ───────────────────────────────────────────────────────────────
 app.use((req, res) => {

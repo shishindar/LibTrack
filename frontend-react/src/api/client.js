@@ -1,55 +1,136 @@
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
-let authToken = null;
+const ACCESS_TOKEN_KEY = "library_tracker_access_token";
+const REFRESH_TOKEN_KEY = "library_tracker_refresh_token";
+
+
+let authToken = localStorage.getItem("library_tracker_access_token");
+let refreshToken = localStorage.getItem("library_tracker_refresh_token");
+
 let onUnauthorized = null;
 
-// Store JWT token in memory
-export function setAuthToken(token) {
-  authToken = token;
-}
-
-// Called when backend returns 401
 export function setUnauthorizedHandler(callback) {
   onUnauthorized = callback;
 }
 
-async function request(path, { method = 'GET', body, params } = {}) {
+// Save tokens
+export function setAuthToken(access, refresh) {
+  authToken = access;
+  refreshToken = refresh;
+
+  if (access) {
+    localStorage.setItem(ACCESS_TOKEN_KEY, access);
+  }
+
+  if (refresh) {
+    localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
+  }
+}
+
+// Clear tokens
+export function clearAuthToken() {
+  authToken = null;
+  refreshToken = null;
+
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+}
+// Refresh Access Token
+async function refreshAccessToken() {
+  if (!refreshToken) return false;
+
+  try {
+    const res = await fetch(`${BASE_URL}/auth/refresh`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        refreshToken,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+  clearAuthToken();
+  return false;
+}
+
+    authToken = data.accessToken;
+
+    localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken);
+
+    return true;
+
+  } catch (err) {
+    console.error("Refresh failed:", err);
+    clearAuthToken();
+    return false;
+  }
+}
+
+async function request(path, options = {}, retry = true) {
   let url = `${BASE_URL}${path}`;
 
-  if (params) {
+  if (options.params) {
     const qs = new URLSearchParams(
-      Object.entries(params).filter(([, value]) => value !== undefined && value !== '')
+      Object.entries(options.params).filter(
+        ([, value]) => value !== undefined && value !== ""
+      )
     ).toString();
 
-    if (qs) url += `?${qs}`;
-  }
-
-  const headers = {
-    'Content-Type': 'application/json',
-  };
-
-  if (authToken) {
-    headers.Authorization = `Bearer ${authToken}`;
-  }
-
-  console.log("========== API REQUEST ==========");
-  console.log("URL:", url);
-  console.log("TOKEN:", authToken);
-  console.log("HEADERS:", headers);
-
-  const res = await fetch(url, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  const data = await res.json().catch(() => ({}));
-
-  if (res.status === 401) {
-    if (onUnauthorized) {
-      onUnauthorized(data.message);
+    if (qs) {
+      url += `?${qs}`;
     }
   }
+
+  const headers = {};
+
+if (!(options.body instanceof FormData)) {
+  headers["Content-Type"] = "application/json";
+}
+
+if (authToken) {
+  headers.Authorization = `Bearer ${authToken}`;
+}
+
+const res = await fetch(url, {
+  method: options.method || "GET",
+  headers,
+  body: options.body
+    ? options.body instanceof FormData
+      ? options.body
+      : JSON.stringify(options.body)
+    : undefined,
+});
+
+ // Don't treat login/register failures as session expiry
+const isAuthRequest =
+  path === "/auth/login" ||
+  path === "/auth/register";
+
+// Handle expired access token only for protected APIs
+if (res.status === 401 && retry && !isAuthRequest) {
+
+  const refreshed = await refreshAccessToken();
+
+  if (refreshed) {
+    console.log("🔄 Retrying request:", path);
+    return request(path, options, false);
+  }
+
+  clearAuthToken();
+
+  if (onUnauthorized) {
+    onUnauthorized("Session expired. Please sign in again.");
+  }
+
+  throw new Error("Session expired. Please sign in again.");
+}
+
+  const data = await res.json().catch(() => ({}));
 
   if (!res.ok || data.success === false) {
     throw new Error(
@@ -62,13 +143,32 @@ async function request(path, { method = 'GET', body, params } = {}) {
 }
 
 export const api = {
-  get: (path, params) => request(path, { method: 'GET', params }),
+  get: (path, params) =>
+    request(path, {
+      method: "GET",
+      params,
+    }),
 
-  post: (path, body) => request(path, { method: 'POST', body }),
+  post: (path, body) =>
+    request(path, {
+      method: "POST",
+      body,
+    }),
 
-  put: (path, body) => request(path, { method: 'PUT', body }),
+  put: (path, body) =>
+    request(path, {
+      method: "PUT",
+      body,
+    }),
 
-  patch: (path, body) => request(path, { method: 'PATCH', body }),
+  patch: (path, body) =>
+    request(path, {
+      method: "PATCH",
+      body,
+    }),
 
-  delete: (path) => request(path, { method: 'DELETE' }),
+  delete: (path) =>
+    request(path, {
+      method: "DELETE",
+    }),
 };

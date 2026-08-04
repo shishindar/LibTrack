@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import { FaPlus, FaSearch, FaTimes } from "react-icons/fa";
+import { toast } from "react-hot-toast";
 import { membersApi } from "../api/members";
 import MemberForm from "../components/MemberForm";
+import Swal from "sweetalert2";
 
 export default function Members() {
   const [members, setMembers] = useState([]);
@@ -10,7 +13,12 @@ export default function Members() {
   const [editingMember, setEditingMember] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
 
-  const [search, setSearch] = useState("");
+const [search, setSearch] = useState("");
+const [searchText, setSearchText] = useState("");
+
+const [currentPage, setCurrentPage] = useState(1);
+
+const membersPerPage = 10;
 
   useEffect(() => {
     fetchMembers();
@@ -20,12 +28,11 @@ export default function Members() {
   try {
     const res = await membersApi.getAll();
 
-    console.log("Members Response:", res);
 
     setMembers(res.data || []);
   } catch (err) {
     console.error(err);
-    alert("Failed to load members.");
+    toast.error("Failed to load members.");
   } finally {
     setLoading(false);
   }
@@ -36,11 +43,23 @@ export default function Members() {
       if (isEditing) {
         await membersApi.update(editingMember.id, member);
 
-        alert("Member Updated Successfully!");
+        Swal.fire({
+  icon: "success",
+  title: "Updated!",
+  text: "Member updated successfully.",
+  timer: 1800,
+  showConfirmButton: false,
+});
       } else {
         await membersApi.create(member);
 
-        alert("Member Added Successfully!");
+        Swal.fire({
+  icon: "success",
+  title: "Success!",
+  text: "Member added successfully.",
+  timer: 1800,
+  showConfirmButton: false,
+});
       }
 
       setShowForm(false);
@@ -51,10 +70,13 @@ export default function Members() {
     } catch (err) {
       console.error(err);
 
-      alert(
-        err.response?.data?.error ||
-        "Something went wrong."
-      );
+      Swal.fire({
+  icon: "error",
+  title: "Error",
+  text:
+    err.response?.data?.error ||
+    "Something went wrong.",
+});
     }
   }
 
@@ -65,41 +87,90 @@ export default function Members() {
   }
 
   async function deleteMember(id) {
-    if (!window.confirm("Delete this member?")) return;
 
-    try {
-      await membersApi.remove(id);
+  const result = await Swal.fire({
+    title: "Delete Member?",
+    text: "This action cannot be undone.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#dc2626",
+    cancelButtonColor: "#6b7280",
+    confirmButtonText: "Yes, Delete",
+    cancelButtonText: "Cancel",
+  });
 
-      alert("Member Deleted Successfully!");
+  if (!result.isConfirmed) return;
 
-      fetchMembers();
-    } catch (err) {
-      console.error(err);
+  try {
 
-      alert(
-        err.response?.data?.error ||
-        "Delete failed."
-      );
-    }
+    await membersApi.remove(id);
+
+    toast.success("Member deleted successfully");
+
+    fetchMembers();
+
+  } catch (err) {
+
+    console.error(err);
+
+    toast.error(
+      err.response?.data?.error ||
+      "Delete failed."
+    );
+
   }
+}
 
   const filteredMembers = useMemo(() => {
 
-    const keyword = search.toLowerCase();
+  const keyword = search.toLowerCase();
 
-    return members.filter((member) =>
+  return members.filter((member) =>
 
-      member.full_name?.toLowerCase().includes(keyword) ||
+    member.full_name?.toLowerCase().includes(keyword) ||
 
-      member.email?.toLowerCase().includes(keyword) ||
+    member.email?.toLowerCase().includes(keyword) ||
 
-      member.phone?.toLowerCase().includes(keyword) ||
+    member.phone?.toLowerCase().includes(keyword) ||
 
-      member.membership_no?.toLowerCase().includes(keyword)
+    member.membership_no?.toLowerCase().includes(keyword)
 
-    );
+  );
 
-  }, [members, search]);
+}, [members, search]);
+
+const indexOfLastMember = currentPage * membersPerPage;
+
+const indexOfFirstMember =
+  indexOfLastMember - membersPerPage;
+
+const currentMembers =
+  filteredMembers.slice(
+    indexOfFirstMember,
+    indexOfLastMember
+  );
+
+const totalPages = Math.ceil(
+  filteredMembers.length / membersPerPage
+);
+
+function handleSearch() {
+
+  setSearch(searchText);
+
+  setCurrentPage(1);
+
+}
+
+function clearSearch() {
+
+  setSearch("");
+
+  setSearchText("");
+
+  setCurrentPage(1);
+
+}
   if (loading) {
   return (
     <div className="flex items-center justify-center h-96">
@@ -145,17 +216,48 @@ return (
     </div>
 
     {/* Search */}
-    <div className="bg-white rounded-xl shadow p-5 mb-6">
+<div className="bg-white rounded-xl shadow p-5 mb-6">
+
+  <div className="flex flex-col md:flex-row gap-3">
+
+    <div className="relative flex-1">
+
+      <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
 
       <input
         type="text"
-        placeholder="🔍 Search members..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
+        placeholder="Search by Name, Email, Phone or Membership No..."
+        value={searchText}
+        onChange={(e) => setSearchText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            handleSearch();
+          }
+        }}
+        className="w-full border rounded-lg pl-12 pr-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
       />
 
     </div>
+
+    <button
+      onClick={handleSearch}
+      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center justify-center gap-2 transition"
+    >
+      <FaSearch />
+      Search
+    </button>
+
+    <button
+      onClick={clearSearch}
+      className="bg-gray-300 hover:bg-gray-400 px-6 py-3 rounded-lg flex items-center justify-center gap-2 transition"
+    >
+      <FaTimes />
+      Clear
+    </button>
+
+  </div>
+
+</div>
 
     {/* Modal */}
     {showForm && (
@@ -217,7 +319,7 @@ return (
 
             ) : (
 
-              filteredMembers.map((member, index) => (
+              currentMembers.map((member, index) => (
 
                 <tr
                   key={member.id}
@@ -225,7 +327,7 @@ return (
                 >
 
                   <td className="px-5 py-4">
-                    {index + 1}
+                    {indexOfFirstMember + index + 1}
                   </td>
 
                   <td className="px-5 py-4 font-semibold">
@@ -296,6 +398,79 @@ return (
 
     </div>
 
+<div className="flex flex-col md:flex-row justify-between items-center mt-6 gap-4">
+
+  <p className="text-gray-600">
+    Showing {filteredMembers.length === 0 ? 0 : indexOfFirstMember + 1}
+    {" - "}
+    {Math.min(indexOfLastMember, filteredMembers.length)}
+    {" of "}
+    {filteredMembers.length} Members
+  </p>
+
+  <div className="flex items-center gap-2 flex-wrap justify-center">
+
+    <button
+      disabled={currentPage === 1}
+      onClick={() => setCurrentPage(currentPage - 1)}
+      className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
+    >
+      Previous
+    </button>
+
+    {Array.from({ length: totalPages }, (_, i) => {
+      const page = i + 1;
+
+      if (
+        page === 1 ||
+        page === totalPages ||
+        (page >= currentPage - 2 && page <= currentPage + 2)
+      ) {
+        return (
+          <button
+            key={page}
+            onClick={() => setCurrentPage(page)}
+            className={`w-10 h-10 rounded-lg transition ${
+              currentPage === page
+                ? "bg-blue-600 text-white"
+                : "bg-gray-200 hover:bg-gray-300"
+            }`}
+          >
+            {page}
+          </button>
+        );
+      }
+
+      if (
+        page === currentPage - 3 ||
+        page === currentPage + 3
+      ) {
+        return (
+          <span
+            key={page}
+            className="px-2 text-gray-500"
+          >
+            ...
+          </span>
+        );
+      }
+
+      return null;
+    })}
+
+    <button
+      disabled={currentPage === totalPages}
+      onClick={() => setCurrentPage(currentPage + 1)}
+      className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
+    >
+      Next
+    </button>
+
   </div>
+
+</div>
+
+</div>
+
 );
 }

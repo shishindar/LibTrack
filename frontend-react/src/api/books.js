@@ -6,12 +6,12 @@ export const booksApi = {
         return api.get("/books");
     },
 
-    create(book) {
-        return api.post("/books", book);
+    create(formData) {
+        return api.post("/books", formData);
     },
 
-    update(id, book) {
-        return api.put(`/books/${id}`, book);
+   update(id, formData) {
+        return api.put(`/books/${id}`, formData);
     },
 
     remove(id) {

@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
+import { useFormik } from "formik";
+import * as Yup from "yup";
 
 export default function MemberForm({
   member: editingMember,
@@ -15,45 +17,80 @@ export default function MemberForm({
     is_active: 1,
   };
 
-  const [member, setMember] = useState(emptyMember);
+  const validationSchema = Yup.object({
+
+  full_name: Yup.string()
+    .required("Full Name is required")
+    .min(3, "Full Name must be at least 3 characters"),
+
+  email: Yup.string()
+    .email("Enter a valid email")
+    .required("Email is required"),
+
+  phone: Yup.string()
+    .required("Phone number is required")
+    .matches(/^[0-9]{10}$/, "Phone number must contain exactly 10 digits"),
+
+  address: Yup.string()
+    .required("Address is required"),
+
+  membership_no: Yup.string()
+    .required("Membership Number is required"),
+
+  is_active: Yup.number().required()
+
+});
+
+
+const formik = useFormik({
+
+  initialValues: emptyMember,
+
+  validationSchema,
+
+  onSubmit: async (values, { resetForm }) => {
+
+    await onSubmit(values);
+
+    if (!isEditing) {
+      resetForm();
+    }
+
+  }
+
+});
 
   useEffect(() => {
-    if (editingMember) {
-      setMember({
-        full_name: editingMember.full_name || "",
-        email: editingMember.email || "",
-        phone: editingMember.phone || "",
-        address: editingMember.address || "",
-        membership_no: editingMember.membership_no || "",
-        is_active: editingMember.is_active ?? 1,
-      });
-    } else {
-      setMember(emptyMember);
-    }
-  }, [editingMember]);
 
-  function handleChange(e) {
-    const { name, value } = e.target;
+  if (editingMember) {
 
-    setMember((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    formik.setValues({
+
+      full_name: editingMember.full_name || "",
+
+      email: editingMember.email || "",
+
+      phone: editingMember.phone || "",
+
+      address: editingMember.address || "",
+
+      membership_no: editingMember.membership_no || "",
+
+      is_active: editingMember.is_active ?? 1
+
+    });
+
+  } else {
+
+    formik.resetForm();
+
   }
 
-  function handleSubmit(e) {
-    e.preventDefault();
+}, [editingMember]);
 
-    if (!member.full_name || !member.email) {
-      alert("Full Name and Email are required.");
-      return;
-    }
-
-    onSubmit(member);
-  }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={formik.handleSubmit} className="space-y-6">
       {/* Header */}
       <div className="border-b pb-4">
         <h2 className="text-2xl font-bold text-gray-800">
@@ -75,13 +112,20 @@ export default function MemberForm({
           </label>
 
           <input
-            type="text"
-            name="full_name"
-            value={member.full_name}
-            onChange={handleChange}
-            className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            placeholder="John Doe"
-          />
+  type="text"
+  name="full_name"
+  value={formik.values.full_name}
+  onChange={formik.handleChange}
+  onBlur={formik.handleBlur}
+  className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+  placeholder="John Doe"
+/>
+
+{formik.touched.full_name && formik.errors.full_name && (
+  <p className="text-red-500 text-sm mt-1">
+    {formik.errors.full_name}
+  </p>
+)}
         </div>
 
         {/* Email */}
@@ -91,13 +135,20 @@ export default function MemberForm({
           </label>
 
           <input
-            type="email"
-            name="email"
-            value={member.email}
-            onChange={handleChange}
-            className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            placeholder="john@email.com"
-          />
+  type="email"
+  name="email"
+  value={formik.values.email}
+  onChange={formik.handleChange}
+  onBlur={formik.handleBlur}
+  className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+  placeholder="john@email.com"
+/>
+
+{formik.touched.email && formik.errors.email && (
+  <p className="text-red-500 text-sm mt-1">
+    {formik.errors.email}
+  </p>
+)}
         </div>
 
         {/* Phone */}
@@ -107,13 +158,20 @@ export default function MemberForm({
           </label>
 
           <input
-            type="text"
-            name="phone"
-            value={member.phone}
-            onChange={handleChange}
-            className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            placeholder="9876543210"
-          />
+  type="text"
+  name="phone"
+  value={formik.values.phone}
+  onChange={formik.handleChange}
+  onBlur={formik.handleBlur}
+  className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+  placeholder="9876543210"
+/>
+
+{formik.touched.phone && formik.errors.phone && (
+  <p className="text-red-500 text-sm mt-1">
+    {formik.errors.phone}
+  </p>
+)}
         </div>
 
         {/* Membership Number */}
@@ -123,13 +181,20 @@ export default function MemberForm({
           </label>
 
           <input
-            type="text"
-            name="membership_no"
-            value={member.membership_no}
-            onChange={handleChange}
-            className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            placeholder="MEM001"
-          />
+  type="text"
+  name="membership_no"
+  value={formik.values.membership_no}
+  onChange={formik.handleChange}
+  onBlur={formik.handleBlur}
+  className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+  placeholder="MEM001"
+/>
+
+{formik.touched.membership_no && formik.errors.membership_no && (
+  <p className="text-red-500 text-sm mt-1">
+    {formik.errors.membership_no}
+  </p>
+)}
         </div>
 
         {/* Address */}
@@ -139,13 +204,20 @@ export default function MemberForm({
           </label>
 
           <textarea
-            rows="4"
-            name="address"
-            value={member.address}
-            onChange={handleChange}
-            className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            placeholder="Enter address"
-          />
+  rows="4"
+  name="address"
+  value={formik.values.address}
+  onChange={formik.handleChange}
+  onBlur={formik.handleBlur}
+  className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+  placeholder="Enter address"
+/>
+
+{formik.touched.address && formik.errors.address && (
+  <p className="text-red-500 text-sm mt-1">
+    {formik.errors.address}
+  </p>
+)}
         </div>
 
         {/* Status */}
@@ -155,14 +227,15 @@ export default function MemberForm({
           </label>
 
           <select
-            name="is_active"
-            value={member.is_active}
-            onChange={handleChange}
-            className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-          >
-            <option value={1}>Active</option>
-            <option value={0}>Inactive</option>
-          </select>
+  name="is_active"
+  value={formik.values.is_active}
+  onChange={formik.handleChange}
+  onBlur={formik.handleBlur}
+  className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+>
+  <option value={1}>Active</option>
+  <option value={0}>Inactive</option>
+</select>
         </div>
 
       </div>
@@ -179,11 +252,20 @@ export default function MemberForm({
         </button>
 
         <button
-          type="submit"
-          className="px-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition"
-        >
-          {isEditing ? "Update Member" : "Save Member"}
-        </button>
+  type="submit"
+  disabled={formik.isSubmitting}
+  className={`px-6 py-3 rounded-lg text-white font-semibold transition ${
+    formik.isSubmitting
+      ? "bg-gray-400 cursor-not-allowed"
+      : "bg-blue-600 hover:bg-blue-700"
+  }`}
+>
+  {formik.isSubmitting
+    ? "Saving..."
+    : isEditing
+    ? "Update Member"
+    : "Save Member"}
+</button>
 
       </div>
     </form>

@@ -3,7 +3,14 @@ const db = require('../config/db');
 // Get all members
 exports.getAllMembers = async (req, res) => {
   try {
-    const [members] = await db.query('SELECT * FROM members');
+    const userId = req.user.id;
+
+const [members] = await db.query(
+  `SELECT *
+   FROM members
+   WHERE user_id = ?`,
+  [userId]
+);
 
     res.json({
       success: true,
@@ -24,9 +31,12 @@ exports.getMemberById = async (req, res) => {
     const { id } = req.params;
 
     const [members] = await db.query(
-      'SELECT * FROM members WHERE id = ?',
-      [id]
-    );
+  `SELECT *
+   FROM members
+   WHERE id = ?
+   AND user_id = ?`,
+  [id, req.user.id]
+);
 
     if (members.length === 0) {
       return res.status(404).json({
@@ -51,6 +61,7 @@ exports.getMemberById = async (req, res) => {
 exports.createMember = async (req, res) => {
   try {
     console.log(req.body);
+    const userId = req.user.id;
     
     const {
       full_name,
@@ -63,14 +74,16 @@ exports.createMember = async (req, res) => {
     const [result] = await db.query(
       `INSERT INTO members
       (
+        user_id,
         full_name,
         email,
         phone,
         address,
         membership_no
       )
-      VALUES (?, ?, ?, ?, ?)`,
+      VALUES (?, ?, ?, ?, ?, ?)`,
       [
+        userId,
         full_name,
         email,
         phone,
@@ -86,17 +99,21 @@ exports.createMember = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
+  console.error("========== MEMBER CREATE ERROR ==========");
+  console.error(error);
+
+  res.status(500).json({
+    success: false,
+    error: error.message,
+  });
+}
 };
 
 // Update member
 exports.updateMember = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.id;
 
     const {
       full_name,
@@ -115,7 +132,7 @@ exports.updateMember = async (req, res) => {
            address = ?,
            membership_no = ?,
            is_active = ?
-       WHERE id = ?`,
+       WHERE id = ? AND user_id = ?`,
       [
         full_name,
         email,
@@ -123,7 +140,8 @@ exports.updateMember = async (req, res) => {
         address,
         membership_no,
         is_active,
-        id
+        id,
+        userId
       ]
     );
 
@@ -153,9 +171,11 @@ exports.deleteMember = async (req, res) => {
     const { id } = req.params;
 
     const [result] = await db.query(
-      'DELETE FROM members WHERE id = ?',
-      [id]
-    );
+  `DELETE FROM members
+   WHERE id = ?
+   AND user_id = ?`,
+  [id, req.user.id]
+);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({
