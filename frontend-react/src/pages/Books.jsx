@@ -3,6 +3,7 @@ import { FaPlus, FaSearch, FaTimes } from "react-icons/fa";
 import Swal from "sweetalert2";
 import { toast } from "react-hot-toast";
 import { booksApi } from "../api/books";
+import { API_BASE } from "../api/client";
 import BookForm from "../components/BookForm";
 
 export default function Books() {
@@ -330,7 +331,7 @@ export default function Books() {
               <td className="px-5 py-4 text-center">
   {book.cover_url ? (
     <img
-      src={`http://localhost:5000${book.cover_url}`}
+      src={`${API_BASE}${book.cover_url}`}
       alt={book.title}
       className="w-14 h-20 object-cover rounded shadow mx-auto"
     />
