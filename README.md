@@ -6,7 +6,7 @@ A modern full-stack **Library Management System** built using **React.js, Node.j
 
 ## 🌐 Live Demo
 
-**Frontend:** https://YOUR-VERCEL-URL.vercel.app
+**Frontend:** https://lib-track-chi.vercel.app/
 
 **Backend API:** https://libtrack-uguf.onrender.com
 
