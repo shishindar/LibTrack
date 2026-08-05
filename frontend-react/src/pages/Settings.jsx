@@ -11,6 +11,7 @@ import toast from "react-hot-toast";
 
 import { useAuth } from "../hooks/useAuth";
 import { profileApi } from "../api/profile";
+const API_BASE = import.meta.env.VITE_API_URL.replace("/api", "");
 
 export default function Settings() {
   const { user, updateUser } = useAuth();
@@ -33,7 +34,7 @@ export default function Settings() {
 
 const [preview, setPreview] = useState(
   user?.profile_image
-    ? `http://localhost:5000${user.profile_image}`
+    ? `${API_BASE}${user.profile_image}`
     : null
 );
 
@@ -105,7 +106,7 @@ async function handlePhotoUpload() {
     updateUser(res.data);
 
     setPreview(
-      `http://localhost:5000${res.data.profile_image}`
+      `${API_BASE}${res.data.profile_image}`
     );
 
     toast.success("Profile picture updated!");

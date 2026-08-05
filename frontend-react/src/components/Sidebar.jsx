@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { UserCircle2 } from "lucide-react";
+const API_BASE = import.meta.env.VITE_API_URL.replace("/api", "");
 
 export default function Sidebar() {
   
@@ -92,7 +93,7 @@ export default function Sidebar() {
 
   {user?.profile_image ? (
     <img
-      src={`http://localhost:5000${user.profile_image}`}
+      src={`${API_BASE}${user.profile_image}`}
       alt="Profile"
       className="w-20 h-20 rounded-full object-cover border-2 border-blue-500 shadow-md"
     />
