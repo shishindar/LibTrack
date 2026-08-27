@@ -12,19 +12,6 @@ A modern full-stack **Library Management System** built using **React.js, Node.j
 
 ---
 
-## 📸 Screenshots
-
-> Add screenshots of the following pages:
-
-- Login Page
-- Dashboard
-- Books
-- Members
-- Loans
-- Fines
-- Settings / Profile
-
----
 
 ## ✨ Features
 
