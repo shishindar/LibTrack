@@ -1,268 +1,147 @@
-# 📚 Library Tracker
+# Library Tracker Management System
 
-A modern full-stack **Library Management System** built using **React.js, Node.js, Express.js, and MySQL**. The application enables librarians to efficiently manage books, members, loans, fines, and user accounts through a secure and intuitive interface.
-
----
+A web-based Library Tracker Management System designed to simplify library operations, manage books and members, track book loans, and monitor overdue fines.
 
 ## 🌐 Live Demo
 
-**Frontend:** https://lib-track-chi.vercel.app/
+- **Frontend:** https://lib-track-chi.vercel.app/
+- **Backend API:** https://libtrack-uguf.onrender.com
+- **Database:** TiDB Cloud Starter
 
-**Backend API:** https://libtrack-uguf.onrender.com
+## 🚀 Features
 
----
+- User authentication and authorization using JWT.
+- Admin and Librarian roles.
+- Book management (Add, View, Update, Delete).
+- Member management.
+- Author management.
+- Book issue and return management.
+- Automatic overdue fine calculation.
+- Dashboard with library statistics.
+- Search and pagination.
+- Book cover image uploads.
+- User-specific data management.
 
+## 🛠️ Technologies Used
 
-## ✨ Features
-
-### 🔐 Authentication
-- User Registration
-- Secure Login
-- JWT Authentication
-- Refresh Token Authentication
-- Password Hashing using bcrypt
-- Account Lock after Multiple Failed Login Attempts
-- Session Expiration Handling
-
-### 👤 User Profile
-- Update Profile Information
-- Upload Profile Picture
-- Remove Profile Picture
-- Change Password
-
-### 📚 Book Management
-- Add Books
-- Edit Books
-- Delete Books
-- Upload Book Cover Images
-- Search Books
-- Pagination
-
-### 👥 Member Management
-- Add Members
-- Edit Members
-- Delete Members
-- Search Members
-- Pagination
-
-### 🔄 Loan Management
-- Issue Books
-- Return Books
-- Track Due Dates
-
-### 💰 Fine Management
-- Automatic Fine Calculation
-- Fine Tracking
-
-### 📊 Dashboard
-- Total Books
-- Total Members
-- Active Loans
-- Total Fines
-- Dashboard Statistics
-
-### 🔒 Security
-- Helmet
-- Input Sanitization
-- Express Rate Limiter
-- JWT Authentication
-- Password Validation
-- Protected Routes
-
-### ☁ Deployment
-- Frontend deployed on Vercel
-- Backend deployed on Render
-- Database hosted on Railway MySQL
-
----
-
-# 🛠 Tech Stack
-
-## Frontend
-
+### Frontend
 - React.js
 - Vite
 - React Router DOM
+- Axios
 - Tailwind CSS
-- Lucide React
-- React Hot Toast
 
-## Backend
-
+### Backend
 - Node.js
 - Express.js
 - MySQL2
-- JWT
+- JSON Web Tokens (JWT)
 - bcryptjs
 - Multer
-- Helmet
-- Morgan
-- Express Rate Limit
 
-## Database
+### Database
+- TiDB Cloud Starter
+- MySQL-compatible database
 
-- MySQL (Railway)
+### Deployment
+- Frontend: Vercel
+- Backend: Render
+- Database: TiDB Cloud Starter
 
-## Deployment
+## 🏗️ System Architecture
 
-- Vercel
-- Render
-- Railway
-
----
-
-# 📂 Project Structure
-
-```
-LIB-Tracker
-│
-├── backend
-│   ├── config
-│   ├── controllers
-│   ├── middleware
-│   ├── routes
-│   ├── uploads
-│   └── server.js
-│
-├── frontend-react
-│   ├── src
-│   ├── public
-│   ├── package.json
-│   └── vite.config.js
-│
-└── README.md
+```text
+          User
+           |
+           v
+    React.js Frontend
+        (Vercel)
+           |
+           | REST API
+           v
+    Node.js + Express
+         (Render)
+           |
+           | MySQL Protocol
+           | TLS Connection
+           v
+      TiDB Cloud
+       (Database)
 ```
 
----
+## 🗄️ Database Structure
 
-# 🚀 Installation
+The system contains six main database tables:
 
-## Clone Repository
+| Table | Description |
+|---|---|
+| users | Stores user login and role information |
+| books | Stores book details |
+| members | Stores library member information |
+| authors | Stores author information |
+| loans | Tracks book issue and return records |
+| fines | Stores overdue fine information |
+
+### Database Views
+
+- `v_active_loans` – Displays books that have not been returned.
+- `v_overdue_loans` – Displays active loans with overdue days greater than zero.
+
+## ⚙️ Installation and Setup
+
+### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/LibTrack.git
+git clone YOUR_GITHUB_REPOSITORY_URL
+cd library-tracker
 ```
 
----
+### 2. Install Dependencies
 
-## Backend
+For the backend:
 
 ```bash
 cd backend
-
 npm install
-
-npm run dev
 ```
 
----
-
-## Frontend
+For the frontend:
 
 ```bash
-cd frontend-react
-
+cd frontend
 npm install
-
-npm run dev
 ```
 
----
+### 3. Configure Environment Variables
 
-# 🔑 Environment Variables
-
-## Backend (.env)
+Create a `.env` file in the backend directory:
 
 ```env
 PORT=5000
+NODE_ENV=development
 
-DB_HOST=your_database_host
+DB_HOST=localhost
 DB_PORT=3306
-DB_USER=your_database_user
-DB_PASSWORD=your_database_password
-DB_NAME=your_database_name
+DB_USER=root
+DB_PASSWORD=your_password
+DB_NAME=library_tracker
 
-JWT_SECRET=your_secret
-JWT_REFRESH_SECRET=your_refresh_secret
+JWT_SECRET=your_secret_key
 ```
 
----
+For production, configure the TiDB Cloud connection details through Render Environment Variables.
 
-## Frontend (.env)
+**Never commit actual passwords, JWT secrets, or `.env` files to GitHub.**
 
-```env
-VITE_API_URL=http://localhost:5000/api
+### 4. Run the Application
+
+Start the backend:
+
+```bash
+npm run dev
 ```
 
----
+Start the frontend:
 
-# 📌 API Endpoints
-
-## Authentication
-
-- POST /api/auth/register
-- POST /api/auth/login
-- POST /api/auth/refresh
-- GET /api/auth/me
-
-## Books
-
-- GET /api/books
-- POST /api/books
-- PUT /api/books/:id
-- DELETE /api/books/:id
-
-## Members
-
-- GET /api/members
-- POST /api/members
-- PUT /api/members/:id
-- DELETE /api/members/:id
-
-## Loans
-
-- GET /api/loans
-- POST /api/loans
-- PUT /api/loans/:id
-
-## Fines
-
-- GET /api/fines
-
-## Profile
-
-- GET /api/profile
-- PUT /api/profile
-- PUT /api/profile/password
-- PUT /api/profile/photo
-- DELETE /api/profile/photo
-
----
-
-# 🎯 Future Improvements
-
-- Email Verification
-- Forgot Password
-- Password Reset
-- Book Reservation
-- Email Notifications
-- QR Code Book Issue
-- Barcode Scanner
-- Reports & Analytics
-- Dark Mode
-- Mobile Responsive Enhancements
-
----
-
-# 👨‍💻 Author
-
-**Shishindar A**
-
-GitHub:
-https://github.com/shishindar
-
----
-
-# 📄 License
-
-This project is licensed under the MIT License.
+```bash
+npm
